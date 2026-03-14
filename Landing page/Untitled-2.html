@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KHATA - Digital Ledger for Small Shops</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+body{
+font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+color:#ffffff;
+line-height:1.6;
+background-color:#05070d;
+
+/* GRID BACKGROUND */
+background-image:
+linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+
+background-size:60px 60px;
+}
+
+/* NAVBAR */
+
+nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:1.5rem 5%;
+background:rgba(5,7,13,0.7);
+backdrop-filter:blur(12px);
+border-bottom:1px solid rgba(255,255,255,0.05);
+position:sticky;
+top:0;
+z-index:100;
+}
+
+.logo{
+font-size:1.8rem;
+font-weight:800;
+background:linear-gradient(90deg,#4F7FFF,#00D4FF,#4F7FFF);
+background-size:200% auto;
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+animation:shine 6s linear infinite;
+}
+
+@keyframes shine{
+to{background-position:200% center;}
+}
+
+.nav-links{
+display:flex;
+gap:2rem;
+list-style:none;
+}
+
+.nav-links a{
+color:#fff;
+text-decoration:none;
+transition:0.3s;
+}
+
+.nav-links a:hover{
+color:#00D4FF;
+}
+
+.nav-buttons{
+display:flex;
+gap:1rem;
+}
+
+/* BUTTONS */
+
+.btn{
+padding:0.75rem 1.5rem;
+border:none;
+border-radius:8px;
+cursor:pointer;
+font-weight:600;
+transition:0.3s;
+}
+
+.btn-secondary{
+background:transparent;
+color:#4F7FFF;
+border:2px solid #4F7FFF;
+}
+
+.btn-secondary:hover{
+background:#4F7FFF;
+color:#000;
+}
+
+.btn-primary{
+background:linear-gradient(90deg,#4F7FFF,#00D4FF);
+color:#000;
+}
+
+.btn-primary:hover{
+transform:translateY(-3px);
+box-shadow:0 10px 40px rgba(79,127,255,0.5);
+}
+
+/* HERO */
+
+.hero{
+text-align:center;
+padding:6rem 5%;
+position:relative;
+}
+
+.hero::before{
+content:"";
+position:absolute;
+width:600px;
+height:600px;
+background:radial-gradient(circle,rgba(79,127,255,0.35),transparent 70%);
+top:-200px;
+left:50%;
+transform:translateX(-50%);
+filter:blur(90px);
+z-index:-1;
+}
+
+.hero h1{
+font-size:clamp(2rem,8vw,3.5rem);
+margin-bottom:1.5rem;
+}
+
+.hero p{
+font-size:1.2rem;
+color:#B0B8D4;
+margin-bottom:2.5rem;
+}
+
+.hero-buttons{
+display:flex;
+gap:1rem;
+justify-content:center;
+flex-wrap:wrap;
+}
+
+/* FEATURES */
+
+.features{
+padding:5rem 5%;
+}
+
+.section-title{
+text-align:center;
+font-size:2.5rem;
+margin-bottom:3rem;
+}
+
+.features-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+gap:2rem;
+max-width:1200px;
+margin:auto;
+}
+
+.feature-card{
+background:rgba(20,26,42,0.6);
+backdrop-filter:blur(10px);
+padding:2rem;
+border-radius:1rem;
+border:1px solid rgba(79,127,255,0.2);
+transition:0.3s;
+}
+
+.feature-card:hover{
+transform:translateY(-8px);
+border-color:#4F7FFF;
+box-shadow:0 0 20px rgba(79,127,255,0.4);
+}
+
+.feature-icon{
+font-size:2.2rem;
+margin-bottom:1rem;
+}
+
+.feature-card p{
+color:#B0B8D4;
+}
+
+/* HOW IT WORKS */
+
+.how-it-works{
+padding:5rem 5%;
+}
+
+.steps-container{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:2rem;
+max-width:1000px;
+margin:auto;
+}
+
+.step{
+text-align:center;
+}
+
+.step-number{
+width:60px;
+height:60px;
+border-radius:50%;
+background:linear-gradient(135deg,#4F7FFF,#00D4FF);
+display:flex;
+align-items:center;
+justify-content:center;
+margin:auto;
+font-weight:bold;
+margin-bottom:1rem;
+color:#000;
+}
+
+/* PRICING */
+
+.pricing{
+padding:5rem 5%;
+}
+
+.pricing-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+gap:2rem;
+max-width:900px;
+margin:auto;
+}
+
+.pricing-card{
+background:rgba(20,26,42,0.6);
+backdrop-filter:blur(10px);
+padding:2.5rem;
+border-radius:1rem;
+border:1px solid rgba(79,127,255,0.2);
+transition:0.3s;
+}
+
+.pricing-card:hover{
+border-color:#4F7FFF;
+box-shadow:
+0 0 20px rgba(79,127,255,0.4),
+0 0 60px rgba(79,127,255,0.2);
+transform:translateY(-5px);
+}
+
+.price{
+font-size:2.5rem;
+font-weight:bold;
+margin-bottom:0.5rem;
+background:linear-gradient(135deg,#4F7FFF,#00D4FF);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.price-period{
+color:#B0B8D4;
+margin-bottom:1.5rem;
+}
+
+.pricing-features{
+list-style:none;
+margin-bottom:2rem;
+}
+
+.pricing-features li{
+padding:0.75rem 0;
+color:#B0B8D4;
+border-bottom:1px solid rgba(79,127,255,0.1);
+}
+
+/* CTA */
+
+.cta{
+padding:4rem 5%;
+text-align:center;
+}
+
+.cta h2{
+font-size:2rem;
+margin-bottom:2rem;
+}
+
+/* FOOTER */
+
+footer{
+background:#141A2A;
+padding:2rem 5%;
+text-align:center;
+border-top:1px solid rgba(79,127,255,0.2);
+color:#B0B8D4;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:768px){
+
+nav{
+flex-direction:column;
+gap:1rem;
+}
+
+.nav-links{
+gap:1rem;
+}
+
+.hero-buttons{
+flex-direction:column;
+align-items:center;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<nav>
+
+<div class="logo">KHATA</div>
+
+<ul class="nav-links">
+<li><a href="#features">Features</a></li>
+<li><a href="#pricing">Pricing</a></li>
+<li><a href="#about">About</a></li>
+</ul>
+
+<div class="nav-buttons">
+<button class="btn btn-secondary">Login</button>
+<button class="btn btn-primary">Get Started</button>
+</div>
+
+</nav>
+
+<section class="hero">
+
+<h1>KHATA — The Simple Digital Ledger for Small Shops</h1>
+
+<p>Track sales, expenses, and customer credit in seconds. No accounting knowledge required.</p>
+
+<div class="hero-buttons">
+<button class="btn btn-primary">Get Started</button>
+<button class="btn btn-secondary">Login Now</button>
+</div>
+
+</section>
+
+<section class="features" id="features">
+
+<h2 class="section-title">Powerful Features</h2>
+
+<div class="features-grid">
+
+<div class="feature-card">
+<div class="feature-icon">📊</div>
+<h3>Track Daily Sales</h3>
+<p>Record every sale instantly and maintain a complete sales history.</p>
+</div>
+
+<div class="feature-card">
+<div class="feature-icon">💰</div>
+<h3>Manage Shop Expenses</h3>
+<p>Keep tabs on all shop expenses and reduce costs.</p>
+</div>
+
+<div class="feature-card">
+<div class="feature-icon">📝</div>
+<h3>Credit Ledger</h3>
+<p>Track udhaar customers easily.</p>
+</div>
+
+<div class="feature-card">
+<div class="feature-icon">📈</div>
+<h3>Profit Dashboard</h3>
+<p>See your profit instantly.</p>
+</div>
+
+<div class="feature-card">
+<div class="feature-icon">📋</div>
+<h3>Simple Reports</h3>
+<p>Understand your business growth.</p>
+</div>
+
+</div>
+</section>
+
+<section class="how-it-works">
+
+<h2 class="section-title">How It Works</h2>
+
+<div class="steps-container">
+
+<div class="step">
+<div class="step-number">1</div>
+<h3>Create Account</h3>
+<p>Sign up and create your shop.</p>
+</div>
+
+<div class="step">
+<div class="step-number">2</div>
+<h3>Add Sales</h3>
+<p>Record sales and expenses.</p>
+</div>
+
+<div class="step">
+<div class="step-number">3</div>
+<h3>Track Profit</h3>
+<p>Monitor profit automatically.</p>
+</div>
+
+</div>
+
+</section>
+
+<section class="pricing" id="pricing">
+
+<h2 class="section-title">Simple Pricing</h2>
+
+<div class="pricing-grid">
+
+<div class="pricing-card">
+
+<h3>Basic Plan</h3>
+
+<div class="price">₹2499</div>
+<div class="price-period">/month</div>
+
+<ul class="pricing-features">
+<li>✓ Advanced reports</li>
+<li>✓ Unlimited history</li>
+<li>✓ Email support</li>
+<li>✓ Up to 2 shops</li>
+</ul>
+
+<button class="btn btn-primary">Start Free Trial</button>
+
+</div>
+
+<div class="pricing-card">
+
+<h3>Pro Plan</h3>
+
+<div class="price">₹5499</div>
+<div class="price-period">/month</div>
+
+<ul class="pricing-features">
+<li>✓ All Basic features</li>
+<li>✓ Unlimited shops</li>
+<li>✓ Priority support</li>
+<li>✓ Advanced analytics</li>
+</ul>
+
+<button class="btn btn-primary">Start Free Trial</button>
+
+</div>
+
+</div>
+
+</section>
+
+<section class="cta">
+
+<h2>Start managing your shop accounts digitally today</h2>
+
+<button class="btn btn-primary">Create Free Account</button>
+
+</section>
+
+<footer>
+
+<p><strong>KHATA by FixYourHub</strong></p>
+<p>Digital ledger for every shopkeeper</p>
+
+</footer>
+
+</body>
+</html>
