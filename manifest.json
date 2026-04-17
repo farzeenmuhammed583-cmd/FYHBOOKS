@@ -2,10 +2,10 @@
   "name": "KHATA - Business Accounting",
   "short_name": "KHATA",
   "description": "Simple business accounting for small businesses",
-  "start_url": "/App/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#020617",
-  "theme_color": "#00ffd0",
+  "theme_color": "#3b82f6",
   "orientation": "portrait",
   "icons": [
     {

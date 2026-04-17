@@ -50,7 +50,7 @@ function getApiBaseUrl() {
 }
 
 function getAppHomePath() {
-    return window.location.pathname.includes("/Pages/") ? "../index.html" : "index.html";
+    return window.location.pathname.includes("/Pages/") ? "../index.html" : "./index.html";
 }
 
 function setLoggedOutRedirectFlag() {
