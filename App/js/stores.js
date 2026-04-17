@@ -1,5 +1,14 @@
 // --- Company Management ---
 
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
 function getCompanyInitials(companyName) {
     if (!companyName) return "CO";
     const words = companyName.trim().split(/\s+/).filter(Boolean);
@@ -23,19 +32,28 @@ function getAvatarColor(companyName) {
     return palette[hash % palette.length];
 }
 
-function getCompanies() {
-    return getStores().map(ensureCompanyTransactions);
-}
-
-function saveCompanies(companies) {
-    saveStores(companies.map(ensureCompanyTransactions));
+function normalizeCompanySale(transaction) {
+    return {
+        id: transaction.id,
+        date: transaction.date,
+        amount: Number(transaction.amount || 0),
+        customer: transaction.customer || "Daily Sale",
+    };
 }
 
 function ensureCompanyTransactions(company) {
+    const companyTransactions = getTransactions()
+        .filter((transaction) => transaction.companyId === company.id && transaction.type === "credit")
+        .map(normalizeCompanySale);
+
     return {
         ...company,
-        transactions: Array.isArray(company.transactions) ? company.transactions : []
+        transactions: companyTransactions,
     };
+}
+
+function getCompanies() {
+    return getStores().map(ensureCompanyTransactions);
 }
 
 function toDateInputValue(date = new Date()) {
@@ -46,7 +64,6 @@ function toDateInputValue(date = new Date()) {
 }
 
 function toSaleIsoDate(selectedDate) {
-    // Store sales in ISO format while preserving the selected local date.
     return new Date(`${selectedDate}T00:00:00`).toISOString();
 }
 
@@ -55,17 +72,13 @@ function openCompanyDetails(companyId) {
 }
 
 function getCompanyRevenue(company) {
-    if (!company.transactions) return 0;
-
-    return company.transactions.reduce((sum, transaction) => {
+    return (company.transactions || []).reduce((sum, transaction) => {
         return sum + Number(transaction.amount || 0);
     }, 0);
 }
 
 function getCompanyTransactionCount(company) {
-    if (!company.transactions) return 0;
-
-    return company.transactions.length;
+    return (company.transactions || []).length;
 }
 
 function getRevenue(company) {
@@ -103,34 +116,7 @@ function getTodayCompanyRevenue(company) {
 }
 
 function syncCompanyTransactionsFromGlobal(companies) {
-    const allTransactions = getTransactions();
-    let didMigrate = false;
-
-    companies.forEach((company, index) => {
-        const normalized = ensureCompanyTransactions(company);
-        companies[index] = normalized;
-
-        if (normalized.transactions.length > 0) {
-            return;
-        }
-
-        const historicalSales = allTransactions
-            .filter(txn => txn.storeId === normalized.id && txn.type === "credit")
-            .map(txn => ({
-                id: `sale_${txn.id || Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                date: txn.date || new Date().toISOString(),
-                amount: Number(txn.amount || 0)
-            }));
-
-        if (historicalSales.length > 0) {
-            normalized.transactions = historicalSales;
-            didMigrate = true;
-        }
-    });
-
-    if (didMigrate) {
-        saveCompanies(companies);
-    }
+    return companies.map(ensureCompanyTransactions);
 }
 
 const companyRevenueChartInstances = new Map();
@@ -166,8 +152,7 @@ function renderCompanyRevenueCharts() {
             return;
         }
 
-        const chartKey = companyId;
-        const existingChart = companyRevenueChartInstances.get(chartKey);
+        const existingChart = companyRevenueChartInstances.get(companyId);
         if (existingChart) {
             existingChart.destroy();
         }
@@ -199,7 +184,7 @@ function renderCompanyRevenueCharts() {
             }
         });
 
-        companyRevenueChartInstances.set(chartKey, chart);
+        companyRevenueChartInstances.set(companyId, chart);
     });
 }
 
@@ -231,7 +216,7 @@ function showAddSaleModal(companyId) {
         <input id="saleDate" type="date" style="width:100%; margin-bottom:12px; padding:12px 14px; border-radius:10px; border:1px solid #334155; background:var(--card, #121a2b); color:#e6eef8; font-size:16px; font-weight:600; color-scheme:dark;" />
         <label style="display:block; margin-bottom:6px;">Amount</label>
         <div id="amountField" class="amount-field" style="display:flex; align-items:center; gap:10px; width:100%; margin-bottom:14px; padding:12px 14px; border-radius:10px; border:1px solid #334155; background:var(--card, #121a2b); transition:border-color 0.2s ease, box-shadow 0.2s ease;">
-            <span style="color:#e6eef8; font-size:22px; font-weight:700; line-height:1;">₹</span>
+            <span style="color:#e6eef8; font-size:22px; font-weight:700; line-height:1;">&#8377;</span>
             <input id="saleAmount" type="number" placeholder="Enter amount" min="1" step="1" style="width:100%; border:none; background:transparent; color:#e6eef8; font-size:20px; font-weight:700; outline:none;" />
         </div>
         <div style="display:flex; gap:10px;">
@@ -274,58 +259,45 @@ function showAddSaleModal(companyId) {
 
     document.getElementById("saleCancelBtn").addEventListener("click", close);
 
-    document.getElementById("saleSaveBtn").addEventListener("click", () => {
+    document.getElementById("saleSaveBtn").addEventListener("click", async () => {
         const amountRaw = document.getElementById("saleAmount").value.trim();
         const date = document.getElementById("saleDate").value;
         const amount = Number(amountRaw);
 
         if (!date) {
-            alert("Please select a valid date.");
+            showWarning("Please select a valid date.");
             return;
         }
 
         if (!amountRaw || !Number.isFinite(amount) || amount <= 0) {
-            alert("Please enter a valid sale amount.");
+            showWarning("Please enter a valid sale amount.");
             return;
         }
 
-        addSale(companyId, amount, date);
-        close();
+        try {
+            await addSale(companyId, amount, date);
+            close();
+            showSuccess("Sale added successfully!");
+        } catch (error) {
+            showError(error.message || "Unable to save sale.");
+        }
     });
 }
 
-function addSale(companyId, amount, date) {
-    const companies = getCompanies();
-    const companyIndex = companies.findIndex(company => company.id === companyId);
-
-    if (companyIndex === -1) {
-        alert("Error: Company not found.");
-        return;
+async function addSale(companyId, amount, date) {
+    const company = getStores().find((entry) => entry.id === companyId);
+    if (!company) {
+        throw new Error("Error: Company not found.");
     }
 
-    const company = ensureCompanyTransactions(companies[companyIndex]);
-    const sale = {
-        id: `sale_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        date: toSaleIsoDate(date),
-        amount: Number(amount)
-    };
-
-    company.transactions.push(sale);
-    companies[companyIndex] = company;
-    saveCompanies(companies);
-
-    // Keep existing dashboard/reports behavior in sync.
-    const transactions = getTransactions();
-    transactions.push({
-        id: `txn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    await createTransactionRecord({
         customer: "Daily Sale",
         amount: Number(amount),
         type: "credit",
-        storeId: company.id,
-        storeName: company.name,
-        date: toSaleIsoDate(date)
+        companyId: company.id,
+        date: toSaleIsoDate(date),
+        createdAt: new Date().toISOString(),
     });
-    saveTransactions(transactions);
 
     renderCompanies();
     if (typeof renderCompanyDetails === "function") {
@@ -336,116 +308,276 @@ function addSale(companyId, amount, date) {
     }
 }
 
-function addCompany() {
-    const companyName = prompt("Enter the new company name:");
-    if (!companyName || companyName.trim() === "") {
-        alert("Company name is required. Please try again.");
-        return;
+function closeCompanyModal() {
+    const overlay = document.getElementById("companyModalOverlay");
+    if (overlay) {
+        overlay.remove();
     }
-
-    const companyLocation = prompt(`Enter the location for ${companyName}:`);
-    const existingCompanies = getCompanies();
-    const newCompany = {
-        id: "company_" + Date.now() + Math.random().toString(36).substring(2, 9),
-        name: companyName.trim(),
-        location: companyLocation ? companyLocation.trim() : "",
-        status: "online",
-        createdAt: new Date().toISOString(),
-        transactions: []
-    };
-
-    existingCompanies.push(newCompany);
-    saveCompanies(existingCompanies);
-
-    renderCompanies();
-    if (typeof updateDashboardStats === "function") {
-        updateDashboardStats();
-    }
+    document.removeEventListener("keydown", companyModalEscapeHandler);
+    document.body.style.overflow = "";
 }
 
-function editCompany(companyId) {
-    const existingCompanies = getCompanies();
-    const companyIndex = existingCompanies.findIndex(company => company.id === companyId);
+let companyModalEscapeHandler = null;
 
-    if (companyIndex === -1) {
-        alert("Error: Company not found.");
-        return;
-    }
+function showAddCompanyModal() {
+    closeCompanyModal();
 
-    const existingCompany = existingCompanies[companyIndex];
-    const updatedName = prompt("Enter the new company name:", existingCompany.name);
-    if (!updatedName || updatedName.trim() === "") {
-        alert("Company name cannot be empty.");
-        return;
-    }
+    const overlay = document.createElement("div");
+    overlay.id = "companyModalOverlay";
+    overlay.className = "company-modal-overlay";
 
-    let updatedStatus;
-    while (true) {
-        updatedStatus = prompt("Enter the status (online/offline):", existingCompany.status);
-        if (updatedStatus === null) return;
-        updatedStatus = updatedStatus.trim().toLowerCase();
-        if (updatedStatus === "online" || updatedStatus === "offline") {
-            break;
+    const modal = document.createElement("div");
+    modal.className = "company-modal";
+
+    modal.innerHTML = `
+        <div class="company-modal-header">
+            <div>
+                <h3>Add Company</h3>
+                <p>Create a new company record.</p>
+            </div>
+            <button type="button" class="company-modal-close" aria-label="Close form">Close</button>
+        </div>
+        <form id="companyForm" class="company-form">
+            <div class="company-form-grid">
+                <label class="company-field company-field-full">
+                    <span>Company Name</span>
+                    <input id="companyName" type="text" placeholder="Enter company name" autocomplete="off" required />
+                </label>
+                <label class="company-field company-field-full">
+                    <span>Location</span>
+                    <input id="companyLocation" type="text" placeholder="Enter location (optional)" />
+                </label>
+                <label class="company-field company-field-full">
+                    <span>Status</span>
+                    <select id="companyStatus">
+                        <option value="online">Online</option>
+                        <option value="offline">Offline</option>
+                    </select>
+                </label>
+            </div>
+            <div class="company-form-actions">
+                <button type="submit" class="btn-primary">Save Company</button>
+                <button type="button" id="companyCancelBtn" class="secondary">Cancel</button>
+            </div>
+        </form>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const nameInput = modal.querySelector("#companyName");
+    const locationInput = modal.querySelector("#companyLocation");
+    const statusSelect = modal.querySelector("#companyStatus");
+    const form = modal.querySelector("#companyForm");
+    const closeButton = modal.querySelector(".company-modal-close");
+    const cancelButton = modal.querySelector("#companyCancelBtn");
+
+    companyModalEscapeHandler = (event) => {
+        if (event.key === "Escape") {
+            closeCompanyModal();
         }
-        alert("Invalid status. Please enter 'online' or 'offline'.");
-    }
-
-    const updatedLocation = prompt("Enter the new location:", existingCompany.location);
-
-    existingCompanies[companyIndex] = {
-        ...existingCompany,
-        name: updatedName.trim(),
-        location: updatedLocation ? updatedLocation.trim() : "",
-        status: updatedStatus
     };
 
-    saveCompanies(existingCompanies);
-    renderCompanies();
+    closeButton.addEventListener("click", closeCompanyModal);
+    cancelButton.addEventListener("click", closeCompanyModal);
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+            closeCompanyModal();
+        }
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const companyNameVal = nameInput.value.trim();
+        const companyLocationVal = locationInput.value.trim();
+        const companyStatusVal = statusSelect.value;
+
+        if (!companyNameVal) {
+            showWarning("Company name is required.");
+            nameInput.focus();
+            return;
+        }
+
+        try {
+            await createCompanyRecord({
+                name: companyNameVal,
+                location: companyLocationVal,
+                status: companyStatusVal,
+                createdAt: new Date().toISOString(),
+            });
+
+            closeCompanyModal();
+            renderCompanies();
+            if (typeof updateDashboardStats === "function") {
+                updateDashboardStats();
+            }
+            showSuccess("Company added successfully!");
+        } catch (error) {
+            showError(error.message || "Unable to add company.");
+        }
+    });
+
+    document.addEventListener("keydown", companyModalEscapeHandler);
+    document.body.style.overflow = "hidden";
+    nameInput.focus();
 }
 
-function deleteCompany(companyId) {
+async function addCompany() {
+    showAddCompanyModal();
+}
+
+function showEditCompanyModal(companyId) {
+    const existingCompany = getStores().find((company) => company.id === companyId);
+
+    if (!existingCompany) {
+        showError("Error: Company not found.");
+        return;
+    }
+
+    closeCompanyModal();
+
+    const overlay = document.createElement("div");
+    overlay.id = "companyModalOverlay";
+    overlay.className = "company-modal-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "company-modal";
+
+    modal.innerHTML = `
+        <div class="company-modal-header">
+            <div>
+                <h3>Edit Company</h3>
+                <p>Update company information.</p>
+            </div>
+            <button type="button" class="company-modal-close" aria-label="Close form">Close</button>
+        </div>
+        <form id="companyForm" class="company-form">
+            <div class="company-form-grid">
+                <label class="company-field company-field-full">
+                    <span>Company Name</span>
+                    <input id="companyName" type="text" placeholder="Enter company name" autocomplete="off" required value="${escapeHtml(existingCompany.name)}" />
+                </label>
+                <label class="company-field company-field-full">
+                    <span>Location</span>
+                    <input id="companyLocation" type="text" placeholder="Enter location (optional)" value="${escapeHtml(existingCompany.location || "")}" />
+                </label>
+                <label class="company-field company-field-full">
+                    <span>Status</span>
+                    <select id="companyStatus">
+                        <option value="online" ${existingCompany.status === "online" ? "selected" : ""}>Online</option>
+                        <option value="offline" ${existingCompany.status === "offline" ? "selected" : ""}>Offline</option>
+                    </select>
+                </label>
+            </div>
+            <div class="company-form-actions">
+                <button type="submit" class="btn-primary">Update Company</button>
+                <button type="button" id="companyCancelBtn" class="secondary">Cancel</button>
+            </div>
+        </form>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const nameInput = modal.querySelector("#companyName");
+    const locationInput = modal.querySelector("#companyLocation");
+    const statusSelect = modal.querySelector("#companyStatus");
+    const form = modal.querySelector("#companyForm");
+    const closeButton = modal.querySelector(".company-modal-close");
+    const cancelButton = modal.querySelector("#companyCancelBtn");
+
+    companyModalEscapeHandler = (event) => {
+        if (event.key === "Escape") {
+            closeCompanyModal();
+        }
+    };
+
+    closeButton.addEventListener("click", closeCompanyModal);
+    cancelButton.addEventListener("click", closeCompanyModal);
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+            closeCompanyModal();
+        }
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const updatedName = nameInput.value.trim();
+        const updatedLocation = locationInput.value.trim();
+        const updatedStatus = statusSelect.value;
+
+        if (!updatedName) {
+            showWarning("Company name cannot be empty.");
+            nameInput.focus();
+            return;
+        }
+
+        try {
+            await updateCompanyRecord(companyId, {
+                name: updatedName,
+                location: updatedLocation,
+                status: updatedStatus,
+            });
+            closeCompanyModal();
+            renderCompanies();
+            showSuccess("Company updated successfully!");
+        } catch (error) {
+            showError(error.message || "Unable to update company.");
+        }
+    });
+
+    document.addEventListener("keydown", companyModalEscapeHandler);
+    document.body.style.overflow = "hidden";
+    nameInput.focus();
+}
+
+async function editCompany(companyId) {
+    showEditCompanyModal(companyId);
+}
+
+async function deleteCompany(companyId) {
     if (!confirm("Are you sure you want to delete this company? This action cannot be undone.")) {
         return;
     }
 
-    const existingCompanies = getCompanies();
-    const remainingCompanies = existingCompanies.filter(company => company.id !== companyId);
-
-    if (existingCompanies.length === remainingCompanies.length) {
-        alert("Error: Company not found for deletion.");
-        return;
-    }
-
-    saveCompanies(remainingCompanies);
-    renderCompanies();
-    if (typeof updateDashboardStats === "function") {
-        updateDashboardStats();
+    try {
+        await deleteCompanyRecord(companyId);
+        renderCompanies();
+        if (typeof updateDashboardStats === "function") {
+            updateDashboardStats();
+        }
+        if (typeof renderCompanyDetails === "function") {
+            renderCompanyDetails();
+        }
+        showSuccess("Company deleted successfully!");
+    } catch (error) {
+        showError(error.message || "Unable to delete company.");
     }
 }
-
-// --- UI Rendering ---
 
 function createCompanyCard(company, metrics) {
     const card = document.createElement("article");
     card.className = "company-card";
     card.style.cursor = "pointer";
-    card.setAttribute("onclick", `openCompanyDetails('${company.id}')`);
+    card.addEventListener("click", () => openCompanyDetails(company.id));
 
     const initials = getCompanyInitials(company.name);
     const avatarColor = getAvatarColor(company.name);
     const statusClass = company.status === "online" ? "status-online" : "status-offline";
     const statusText = company.status === "online" ? "Online" : "Offline";
-    const formattedRevenue = `₹${Number(metrics.revenue || 0).toLocaleString("en-IN")}`;
-    const formattedTodaySales = `₹${Number(metrics.todayRevenue || 0).toLocaleString("en-IN")}`;
+    const formattedRevenue = `&#8377;${Number(metrics.revenue || 0).toLocaleString("en-IN")}`;
+    const formattedTodaySales = `&#8377;${Number(metrics.todayRevenue || 0).toLocaleString("en-IN")}`;
 
     card.innerHTML = `
         <div class="company-card-content">
             <div class="company-header">
                 <div class="company-info">
-                    <div class="company-avatar" style="background:${avatarColor};">${initials}</div>
+                    <div class="company-avatar" style="background:${avatarColor};">${escapeHtml(initials)}</div>
                     <div class="company-meta">
-                        <h3>${company.name}</h3>
-                        <p>${company.location || "No location"}</p>
+                        <h3>${escapeHtml(company.name)}</h3>
+                        <p>${escapeHtml(company.location || "No location")}</p>
                     </div>
                 </div>
                 <span class="status-pill ${statusClass}">${statusText}</span>
@@ -465,17 +597,17 @@ function createCompanyCard(company, metrics) {
                 </div>
             </div>
             <div class="company-chart">
-                <canvas class="company-revenue-chart" data-company-id="${company.id}"></canvas>
+                <canvas class="company-revenue-chart" data-company-id="${escapeHtml(company.id)}"></canvas>
             </div>
         </div>
         <div class="company-actions-layout">
             <div class="company-actions company-actions-stack">
-                <button onclick="event.stopPropagation();showAddSaleModal('${company.id}')" class="secondary">Add Sale</button>
-                <button onclick="event.stopPropagation();editCompany('${company.id}')" class="secondary">Edit</button>
-                <button onclick="event.stopPropagation();deleteCompany('${company.id}')" class="danger">Delete</button>
+                <button onclick="event.stopPropagation();showAddSaleModal('${escapeHtml(company.id)}')" class="secondary">Add Sale</button>
+                <button onclick="event.stopPropagation();showEditCompanyModal('${escapeHtml(company.id)}')" class="secondary">Edit</button>
+                <button onclick="event.stopPropagation();deleteCompany('${escapeHtml(company.id)}')" class="danger">Delete</button>
             </div>
             <div class="company-extra-actions company-actions">
-                <button onclick="event.stopPropagation();openCompanyDetails('${company.id}')" class="secondary btn-secondary">View Details</button>
+                <button onclick="event.stopPropagation();openCompanyDetails('${escapeHtml(company.id)}')" class="secondary btn-secondary">View Details</button>
                 <button onclick="event.stopPropagation();window.location.href='reports.html'" class="secondary btn-secondary">Reports</button>
             </div>
         </div>
@@ -484,24 +616,11 @@ function createCompanyCard(company, metrics) {
     return card;
 }
 
-function getRevenue(company) {
-    if (!company.transactions) return 0;
-    return company.transactions.reduce((t, s) => t + Number(s.amount || 0), 0);
-}
-
-function getTxnCount(company) {
-    if (!company.transactions) return 0;
-    return company.transactions.length;
-}
-
 function renderCompanies() {
     const container = document.getElementById("companiesContainer");
     if (!container) return;
 
-    let companies = getCompanies();
-    syncCompanyTransactionsFromGlobal(companies);
-    companies = getCompanies(); // Re-fetch after sync
-
+    const companies = syncCompanyTransactionsFromGlobal(getStores());
     container.innerHTML = "";
 
     if (companies.length === 0) {
@@ -514,7 +633,7 @@ function renderCompanies() {
         return;
     }
 
-    companies.forEach(company => {
+    companies.forEach((company) => {
         const metrics = {
             revenue: getRevenue(company),
             transactionCount: getTxnCount(company),
@@ -527,4 +646,18 @@ function renderCompanies() {
     renderCompanyRevenueCharts();
 }
 
-document.addEventListener("DOMContentLoaded", renderCompanies);
+async function initStoresPage() {
+    const container = document.getElementById("companiesContainer");
+    if (!container) {
+        return;
+    }
+
+    await ensureAppDataLoaded();
+    renderCompanies();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    initStoresPage().catch((error) => {
+        showError(error.message || "Unable to load companies.");
+    });
+});

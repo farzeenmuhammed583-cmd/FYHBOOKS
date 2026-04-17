@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate PWA Icons</title>
+  <style>
+    body { font-family: system-ui; padding: 40px; background: #0f172a; color: #e2e8f0; }
+    h1 { color: #00ffd0; }
+    button { background: #3b82f6; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 10px; }
+    button:hover { background: #2563eb; }
+    .preview { margin: 20px 0; }
+    canvas { border: 2px solid #334155; margin: 10px; border-radius: 12px; }
+    .instructions { background: #1e293b; padding: 20px; border-radius: 12px; margin: 20px 0; max-width: 600px; }
+    .status { margin: 20px 0; padding: 15px; border-radius: 8px; }
+    .success { background: #064e3b; color: #6ee7b7; }
+  </style>
+</head>
+<body>
+  <h1>PWA Icon Generator</h1>
+  <div class="instructions">
+    <p><strong>Instructions:</strong> This page automatically generates and downloads both PWA icons when opened.</p>
+    <p>Save the downloaded files to: <code>App/icons/icon-192.png</code> and <code>App/icons/icon-512.png</code></p>
+    <p>If auto-download doesn't work, click the buttons below.</p>
+  </div>
+  
+  <button onclick="downloadAll()">Download Both Icons</button>
+  <button onclick="download192()">Download 192x192</button>
+  <button onclick="download512()">Download 512x512</button>
+
+  <div class="status success" id="status"></div>
+  
+  <div class="preview">
+    <h3>Preview:</h3>
+    <canvas id="preview192" width="192" height="192"></canvas>
+    <canvas id="preview512" width="512" height="512"></canvas>
+  </div>
+
+  <script>
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      const scale = size / 192;
+      
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(0, 0, size, size);
+      
+      const radius = 28 * scale;
+      const inset = 12 * scale;
+      ctx.fillStyle = '#00ffd0';
+      ctx.beginPath();
+      ctx.roundRect(inset, inset, size - inset * 2, size - inset * 2, radius);
+      ctx.fill();
+      
+      ctx.fillStyle = '#020617';
+      ctx.font = `bold ${110 * scale}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('K', size / 2, size / 2 + (8 * scale));
+    }
+    
+    drawIcon(document.getElementById('preview192'), 192);
+    drawIcon(document.getElementById('preview512'), 512);
+    
+    function download(canvas, filename) {
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    
+    function download192() {
+      download(document.getElementById('preview192'), 'icon-192.png');
+    }
+    
+    function download512() {
+      download(document.getElementById('preview512'), 'icon-512.png');
+    }
+    
+    function downloadAll() {
+      download192();
+      setTimeout(download512, 300);
+      document.getElementById('status').textContent = 'Icons downloaded! Save them to App/icons/ folder.';
+    }
+    
+    window.onload = function() {
+      setTimeout(downloadAll, 500);
+      document.getElementById('status').textContent = 'Auto-download triggered. If nothing downloaded, click the buttons above.';
+    };
+  </script>
+</body>
+</html>

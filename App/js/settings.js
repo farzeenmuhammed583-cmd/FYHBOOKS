@@ -1,63 +1,76 @@
-function loadAccountInfo(){
+function loadAccountInfo() {
+    const user = getCurrentUser();
+    if (!user) {
+        return;
+    }
 
-let user=getCurrentUser();
+    const name = document.getElementById("accountName");
+    const email = document.getElementById("accountEmail");
 
-if(!user) return;
+    if (name) {
+        name.innerText = `Name: ${user.name}`;
+    }
 
-let name=document.getElementById("accountName");
-let email=document.getElementById("accountEmail");
-
-if(name) name.innerText="Name: "+user.name;
-if(email) email.innerText="Email: "+user.email;
-
+    if (email) {
+        email.innerText = `Email: ${user.email}`;
+    }
 }
 
-function resetUserData(){
+async function resetUserData() {
+    const user = getCurrentUser();
+    if (!user) {
+        return;
+    }
 
-let user=getCurrentUser();
+    const confirmReset = confirm("Reset all your stores, transactions and expenses?");
+    if (!confirmReset) {
+        return;
+    }
 
-if(!user) return;
-
-let confirmReset=confirm("Reset all your stores, transactions and expenses?");
-
-if(!confirmReset) return;
-
-localStorage.removeItem("companies_"+user.email);
-localStorage.removeItem("transactions_"+user.email);
-localStorage.removeItem("expenses_"+user.email);
-localStorage.removeItem("reports_"+user.email);
-
-alert("All data cleared");
-
+    try {
+        await resetUserDataRemote();
+        localStorage.removeItem(getMigrationMarkerKey(user));
+        showSuccess("All data cleared");
+    } catch (error) {
+        showError(error.message || "Unable to clear data.");
+    }
 }
 
-function deleteAccount(){
+async function deleteAccount() {
+    const user = getCurrentUser();
+    if (!user) {
+        return;
+    }
 
-let user=getCurrentUser();
+    const confirmDelete = confirm("Delete your account permanently?");
+    if (!confirmDelete) {
+        return;
+    }
 
-if(!user) return;
-
-let confirmDelete=confirm("Delete your account permanently?");
-
-if(!confirmDelete) return;
-
-let users=JSON.parse(localStorage.getItem("khata_users")) || [];
-
-users=users.filter(u=>u.email!==user.email);
-
-localStorage.setItem("khata_users",JSON.stringify(users));
-
-localStorage.removeItem("companies_"+user.email);
-localStorage.removeItem("transactions_"+user.email);
-localStorage.removeItem("expenses_"+user.email);
-localStorage.removeItem("reports_"+user.email);
-
-localStorage.removeItem("currentUser");
-
-alert("Account deleted");
-
-window.location.href="login.html";
-
+    try {
+        await deleteCurrentUserRemote();
+        showSuccess("Account deleted");
+        window.location.href = typeof getAppHomePath === "function"
+            ? getAppHomePath()
+            : "../index.html";
+    } catch (error) {
+        showError(error.message || "Unable to delete account.");
+    }
 }
 
-document.addEventListener("DOMContentLoaded",loadAccountInfo);
+function resetOnboardingWizard() {
+    if (typeof resetOnboarding !== "function") {
+        showError("Onboarding module not loaded.");
+        return;
+    }
+
+    const confirmReset = confirm("Reset onboarding wizard? You will see the welcome screen on next visit.");
+    if (!confirmReset) {
+        return;
+    }
+
+    resetOnboarding();
+    showInfo("Onboarding reset. Refresh the app to see the welcome screen.");
+}
+
+document.addEventListener("DOMContentLoaded", loadAccountInfo);

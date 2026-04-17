@@ -18,7 +18,7 @@ function formatDisplayDate(dateInput) {
 function openAddSaleForCurrentCompany() {
     const companyId = getCompanyIdFromUrl();
     if (!companyId) {
-        alert("Invalid company.");
+        showError("Invalid company.");
         return;
     }
     showAddSaleModal(companyId);
@@ -36,10 +36,7 @@ function renderCompanyDetails() {
         return;
     }
 
-    const companies = getCompanies();
-    syncCompanyTransactionsFromGlobal(companies);
-
-    const company = companies.find(c => c.id === companyId);
+    const company = getCompanies().find((entry) => entry.id === companyId);
     if (!company) {
         heading.textContent = "Company Not Found";
         revenueEl.textContent = formatCurrency(0);
@@ -53,15 +50,14 @@ function renderCompanyDetails() {
         return;
     }
 
-    const normalizedCompany = ensureCompanyTransactions(company);
-    const sales = normalizedCompany.transactions.slice().sort((a, b) => {
+    const sales = (company.transactions || []).slice().sort((a, b) => {
         return new Date(b.date) - new Date(a.date);
     });
 
-    heading.textContent = normalizedCompany.name || "Company Details";
-    revenueEl.textContent = formatCurrency(calculateCompanyRevenue(normalizedCompany));
-    transactionsEl.textContent = String(getCompanyTransactionCount(normalizedCompany));
-    todaySalesEl.textContent = formatCurrency(getTodaySales(normalizedCompany));
+    heading.textContent = company.name || "Company Details";
+    revenueEl.textContent = formatCurrency(calculateCompanyRevenue(company));
+    transactionsEl.textContent = String(getCompanyTransactionCount(company));
+    todaySalesEl.textContent = formatCurrency(getTodaySales(company));
 
     tableBody.innerHTML = "";
 
@@ -83,4 +79,10 @@ function renderCompanyDetails() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", renderCompanyDetails);
+document.addEventListener("DOMContentLoaded", () => {
+    ensureAppDataLoaded()
+        .then(renderCompanyDetails)
+        .catch((error) => {
+            showError(error.message || "Unable to load company details.");
+        });
+});

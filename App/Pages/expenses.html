@@ -33,6 +33,12 @@ Dashboard
 </svg>
 Companies
 </a>
+<a href="transactions.html">
+<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<path d="M3 5h18M5 9h14M9 13h10M11 17h8"/>
+</svg>
+Transactions
+</a>
 <a href="reports.html">
 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 <path d="M12 20V10M18 20V4M6 20V16"/>
@@ -84,29 +90,73 @@ Logout
     <div class="user-pill">
       <span id="userName"></span>
     </div>
+    <button class="theme-toggle" id="themeToggle" onclick="Theme.toggle()"></button>
   </div>
 </div>
 
+<p class="page-description">Track internal business costs like rent, salary, utilities, and supplies.</p>
+
 <button class="add-btn btn-primary" onclick="addExpense()">+ Add Expense</button>
 
-<div class="table-shell">
+<section class="expenses-overview">
+  <div class="expense-summary-grid">
+    <article class="expense-summary-card">
+      <span class="expense-summary-label">Total Expenses This Month</span>
+      <strong id="expenseMonthlyTotal" class="expense-summary-value">₹0.00</strong>
+    </article>
+    <article class="expense-summary-card">
+      <span class="expense-summary-label">Expense Transactions</span>
+      <strong id="expenseTransactionCount" class="expense-summary-value">0</strong>
+    </article>
+    <article class="expense-summary-card expense-breakdown-card">
+      <span class="expense-summary-label">Category Breakdown</span>
+      <div id="expenseCategoryBreakdown" class="expense-breakdown-list"></div>
+    </article>
+  </div>
+
+  <div class="expenses-toolbar">
+    <div class="search expense-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="expenseSearchInput" type="search" placeholder="Search title, category, or company..." />
+    </div>
+    <select id="expenseCategoryFilter" class="expense-filter-select">
+      <option value="">All Categories</option>
+    </select>
+    <input id="expenseStartDateFilter" class="expense-filter-date" type="date" />
+    <input id="expenseEndDateFilter" class="expense-filter-date" type="date" />
+    <button id="clearExpenseFilters" type="button" class="secondary expense-clear-btn">Clear Filters</button>
+  </div>
+</section>
+
+<div id="expenseEmptyState" class="empty-state expense-empty-state" hidden>
+  <h3>No expenses yet. Add your first expense.</h3>
+  <p>Use the button above to record salary, transport, rent, or any other expense.</p>
+</div>
+
+<div class="table-shell expense-table-shell">
   <table id="expenseTable">
-  <tr>
-  <th>Date</th>
-  <th>Title</th>
-  <th>Category</th>
-  <th>Amount</th>
-  </tr>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Title</th>
+        <th>Category</th>
+        <th>Company</th>
+        <th class="expense-amount-col">Amount</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
   </table>
 </div>
 
 </div>
 
 <script src="../js/db.js"></script>
+<script src="../js/theme.js"></script>
+<script src="../js/toast.js"></script>
+<script src="../js/demo.js"></script>
 <script src="../js/auth.js"></script>
-<script src="../js/expenses.js"></script>
 <script src="../js/app.js"></script>
-
+<script src="../js/expenses.js"></script>
 </body>
 
 </html>

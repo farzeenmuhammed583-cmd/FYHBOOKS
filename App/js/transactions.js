@@ -1,83 +1,203 @@
 // --- Transaction Management ---
 
-function addTransaction() {
-    // 1. Get Core Transaction Details
-    const customer = prompt("Enter customer's name:");
-    if (!customer) return;
-
-    const amount = parseFloat(prompt("Enter transaction amount:"));
-    if (isNaN(amount) || amount <= 0) {
-        alert("Invalid amount. Please enter a positive number.");
-        return;
+function getTransactionCompanyName(transaction) {
+    if (transaction.companyName) {
+        return transaction.companyName;
     }
 
-    let type;
-    while (true) {
-        type = prompt("Enter transaction type (credit/debit):")?.trim().toLowerCase();
-        if (type === "credit" || type === "debit") break;
-        alert("Invalid type. Please enter 'credit' or 'debit'.");
-    }
-
-    // 2. Select a Store
-    const stores = getStores();
-    if (stores.length === 0) {
-        alert("Error: No stores found. Please create a store first.");
-        return;
-    }
-
-    let storeSelectionPrompt = "Select a store for this transaction:\n\n";
-    stores.forEach((s, i) => {
-        storeSelectionPrompt += `${i + 1}. ${s.name}\n`;
-    });
-    storeSelectionPrompt += "\nEnter the store number or name.";
-
-    let selectedStore = null;
-    while (!selectedStore) {
-        const selection = prompt(storeSelectionPrompt);
-        if (selection === null) return; // User cancelled
-
-        const index = parseInt(selection, 10) - 1;
-        if (!isNaN(index) && stores[index]) {
-            selectedStore = stores[index];
-        } else {
-            selectedStore = stores.find(s => s.name.toLowerCase() === selection.trim().toLowerCase());
-        }
-
-        if (!selectedStore) {
-            alert("Invalid selection. Please try again.");
-        }
-    }
-
-    // 3. Create and Save the Transaction
-    const newTransaction = {
-        id: 'txn_' + Date.now(),
-        customer,
-        amount,
-        type,
-        storeId: selectedStore.id, // Link by ID
-        storeName: selectedStore.name, // Denormalize for easy display
-        date: new Date().toISOString()
-    };
-
-    const transactions = getTransactions();
-    transactions.push(newTransaction);
-    saveTransactions(transactions);
-
-    // 4. Update UI
-    renderTransactions();
-    if (typeof updateDashboardStats === 'function') {
-        updateDashboardStats();
-    }
+    const company = getStores().find((store) => store.id === transaction.companyId);
+    return company ? company.name : "N/A";
 }
 
-// --- UI Rendering ---
+function closeTransactionModal() {
+    const overlay = document.getElementById("transactionModalOverlay");
+    if (overlay) {
+        overlay.remove();
+    }
+    document.removeEventListener("keydown", transactionModalEscapeHandler);
+    document.body.style.overflow = "";
+}
+
+let transactionModalEscapeHandler = null;
+
+function showAddTransactionModal() {
+    closeTransactionModal();
+
+    const stores = getStores();
+    if (stores.length === 0) {
+        showError("Error: No stores found. Please create a store first.");
+        return;
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "transactionModalOverlay";
+    overlay.className = "transaction-modal-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "transaction-modal";
+
+    const storeOptions = stores.map((store) => 
+        `<option value="${escapeHtml(store.id)}">${escapeHtml(store.name)}</option>`
+    ).join("");
+
+    const todayDate = new Date().toISOString().split("T")[0];
+
+    modal.innerHTML = `
+        <div class="transaction-modal-header">
+            <div>
+                <h3>Add Transaction</h3>
+                <p>Record a new credit or debit transaction.</p>
+            </div>
+            <button type="button" class="transaction-modal-close" aria-label="Close form">Close</button>
+        </div>
+        <form id="transactionForm" class="transaction-form">
+            <div class="transaction-form-grid">
+                <label class="transaction-field transaction-field-full">
+                    <span>Customer Name</span>
+                    <input id="transactionCustomer" type="text" placeholder="Enter customer name" autocomplete="off" />
+                </label>
+                <label class="transaction-field transaction-field-full">
+                    <span>Amount</span>
+                    <div class="amount-field">
+                        <span class="amount-symbol">&#8377;</span>
+                        <input id="transactionAmount" type="number" min="0.01" step="0.01" placeholder="Enter amount" />
+                    </div>
+                </label>
+                <label class="transaction-field transaction-field-full">
+                    <span>Transaction Type</span>
+                    <div class="transaction-type-buttons">
+                        <button type="button" class="type-btn type-credit selected" data-type="credit">Credit</button>
+                        <button type="button" class="type-btn type-debit" data-type="debit">Debit</button>
+                    </div>
+                    <input id="transactionType" type="hidden" value="credit" />
+                </label>
+                <label class="transaction-field transaction-field-full">
+                    <span>Store / Company</span>
+                    <select id="transactionStore">
+                        ${storeOptions}
+                    </select>
+                </label>
+                <label class="transaction-field transaction-field-full">
+                    <span>Date</span>
+                    <input id="transactionDate" type="date" value="${todayDate}" />
+                </label>
+            </div>
+            <div class="transaction-form-actions">
+                <button type="submit" class="btn-primary">Save Transaction</button>
+                <button type="button" id="transactionCancelBtn" class="secondary">Cancel</button>
+            </div>
+        </form>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const customerInput = modal.querySelector("#transactionCustomer");
+    const amountInput = modal.querySelector("#transactionAmount");
+    const typeInput = modal.querySelector("#transactionType");
+    const storeSelect = modal.querySelector("#transactionStore");
+    const dateInput = modal.querySelector("#transactionDate");
+    const form = modal.querySelector("#transactionForm");
+    const closeButton = modal.querySelector(".transaction-modal-close");
+    const cancelButton = modal.querySelector("#transactionCancelBtn");
+    const typeCreditBtn = modal.querySelector(".type-credit");
+    const typeDebitBtn = modal.querySelector(".type-debit");
+
+    transactionModalEscapeHandler = (event) => {
+        if (event.key === "Escape") {
+            closeTransactionModal();
+        }
+    };
+
+    const updateTypeButtons = (selectedType) => {
+        typeCreditBtn.classList.toggle("selected", selectedType === "credit");
+        typeDebitBtn.classList.toggle("selected", selectedType === "debit");
+        typeInput.value = selectedType;
+    };
+
+    typeCreditBtn.addEventListener("click", () => updateTypeButtons("credit"));
+    typeDebitBtn.addEventListener("click", () => updateTypeButtons("debit"));
+
+    closeButton.addEventListener("click", closeTransactionModal);
+    cancelButton.addEventListener("click", closeTransactionModal);
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+            closeTransactionModal();
+        }
+    });
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const customer = customerInput.value.trim();
+        const amount = Number(amountInput.value);
+        const type = typeInput.value;
+        const companyId = storeSelect.value;
+        const date = dateInput.value;
+
+        if (!customer) {
+            showWarning("Customer name is required.");
+            customerInput.focus();
+            return;
+        }
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+            showWarning("Please enter a valid, positive amount.");
+            amountInput.focus();
+            return;
+        }
+
+        if (!date) {
+            showWarning("Please select a valid date.");
+            dateInput.focus();
+            return;
+        }
+
+        if (!companyId) {
+            showWarning("Please select a store.");
+            storeSelect.focus();
+            return;
+        }
+
+        try {
+            await createTransactionRecord({
+                customer,
+                amount,
+                type,
+                companyId,
+                date: new Date(`${date}T00:00:00`).toISOString(),
+                createdAt: new Date().toISOString(),
+            });
+
+            closeTransactionModal();
+            renderTransactions();
+            if (typeof updateDashboardStats === "function") {
+                updateDashboardStats();
+            }
+            showSuccess("Transaction created successfully!");
+        } catch (error) {
+            showError(error.message || "Unable to create transaction.");
+        }
+    });
+
+    document.addEventListener("keydown", transactionModalEscapeHandler);
+    document.body.style.overflow = "hidden";
+    customerInput.focus();
+}
+
+async function addTransaction() {
+    await ensureAppDataLoaded();
+    showAddTransactionModal();
+}
 
 function renderTransactions() {
-    const tableBody = document.querySelector("#transactionTable tbody");
-    if (!tableBody) return;
+    const table = document.getElementById("transactionTable");
+    if (!table) return;
 
-    const transactions = getTransactions();
-    tableBody.innerHTML = ""; // Clear existing rows
+    const tableBody = table.tBodies[0] || table.createTBody();
+
+    const transactions = getTransactions().slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+    tableBody.innerHTML = "";
 
     if (transactions.length === 0) {
         const row = tableBody.insertRow();
@@ -88,18 +208,29 @@ function renderTransactions() {
         return;
     }
 
-    transactions.slice().reverse().forEach(t => {
+    transactions.forEach((transaction) => {
         const row = tableBody.insertRow();
         row.innerHTML = `
-            <td>${new Date(t.date).toLocaleString()}</td>
-            <td>${t.customer}</td>
-            <td>₹${t.amount.toFixed(2)}</td>
+            <td>${new Date(transaction.date).toLocaleString()}</td>
+            <td>${escapeHtml(transaction.customer)}</td>
+            <td>${formatCurrency(transaction.amount)}</td>
             <td>
-                <span class="status status-${t.type === 'credit' ? 'credit' : 'debit'}">${t.type}</span>
+                <span class="status status-${transaction.type === "credit" ? "credit" : "debit"}">${transaction.type}</span>
             </td>
-            <td>${t.storeName || 'N/A'}</td>
+            <td>${escapeHtml(getTransactionCompanyName(transaction))}</td>
         `;
     });
 }
 
-document.addEventListener("DOMContentLoaded", renderTransactions);
+document.addEventListener("DOMContentLoaded", () => {
+    const table = document.getElementById("transactionTable");
+    if (!table) {
+        return;
+    }
+
+    ensureAppDataLoaded()
+        .then(renderTransactions)
+        .catch((error) => {
+            showError(error.message || "Unable to load transactions.");
+        });
+});
