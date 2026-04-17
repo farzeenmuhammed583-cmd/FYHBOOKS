@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // Ensure user is authenticated
-    const user = requireCurrentUser();
+    const user = window.requireCurrentUser();
     if (!user) return; // Stop execution if not logged in
 
     // Display user's name
@@ -21,16 +21,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         // Load all application data. This is now the single source of truth.
-        await ensureAppDataLoaded();
+        await window.ensureAppDataLoaded();
     } catch (error) {
-        showError(`Failed to load application data: ${error.message}`);
-        logoutUser(); // Log out if data fails to load
+        console.error("Data load error:", error);
+        window.location.href = window.getAppHomePath();
         return;
+    }
+
+    // Show onboarding wizard if not complete
+    if (typeof window.initOnboarding === "function") {
+        window.initOnboarding();
     }
 
     // If on the dashboard, update the stats.
     if (currentPage.includes("dashboard")) {
-        updateDashboardStats();
+        window.updateDashboardStats();
     }
 });
 
@@ -129,6 +134,33 @@ function updateDashboardStats() {
     if (!salesEl) {
         return;
     }
+
+    const transactions = window.getTransactions();
+    const expenses = window.getExpenses();
+    const stores = window.getStores();
+
+    let totalSales = 0;
+    let totalTransactionExpenses = 0;
+
+    transactions.forEach((transaction) => {
+        if (transaction.type === "credit") {
+            totalSales += Number(transaction.amount || 0);
+        } else if (transaction.type === "debit") {
+            totalTransactionExpenses += Number(transaction.amount || 0);
+        }
+    });
+
+    const totalStandaloneExpenses = expenses.reduce((acc, expense) => acc + Number(expense.amount || 0), 0);
+    const netBalance = totalSales - (totalTransactionExpenses + totalStandaloneExpenses);
+
+    document.getElementById("totalSales").innerText = formatCurrency(totalSales);
+    document.getElementById("totalExpenses").innerText = formatCurrency(totalTransactionExpenses + totalStandaloneExpenses);
+    document.getElementById("totalTransactions").innerText = String(window.getTotalTransactions());
+    document.getElementById("netBalance").innerText = formatCurrency(netBalance);
+    document.getElementById("storeCount").innerText = String(stores.length);
+}
+
+window.updateDashboardStats = updateDashboardStats;
 
     const transactions = getTransactions();
     const expenses = getExpenses();
