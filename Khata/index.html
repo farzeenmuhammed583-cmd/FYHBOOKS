@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FYHBOOKS</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#020617">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, #1f2937 0%, #0f172a 55%, #020617 100%);
+      color: #e2e8f0;
+    }
+
+    .launch-card {
+      width: min(92vw, 420px);
+      padding: 32px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      box-shadow: 0 20px 60px rgba(2, 6, 23, 0.45);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      letter-spacing: 0.08em;
+    }
+
+    p {
+      margin: 0;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 12px;
+      background: #22c55e;
+      color: #04130a;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    input {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.6);
+      color: #e2e8f0;
+      font-size: 15px;
+      width: 80%;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #22c55e;
+    }
+
+    .error {
+      color: #ef4444;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+  </style>
+  <script src="js/onboarding.js"></script>
+  <script src="js/theme.js"></script>
+  <script>
+    const TOKEN_KEY = "khata_auth_token";
+    const USER_KEY = "currentUser";
+    const DEMO_MODE_KEY = "khata_demo_mode";
+    const SKIP_AUTO_LOGIN_KEY = "khata_skip_auto_login";
+    const SECURITY_PASS_KEY = "security_pass_verified";
+    const SECURITY_PASSWORD = "takerisk123";
+    const DEMO_TOKEN = "jwt-demo-token-string-for-local-auth-simulation";
+    const DEMO_USER = { id: "user-demo-01", name: "Demo User", email: "demo@khata.app" };
+
+    function getStoredUser() {
+      const raw = localStorage.getItem(USER_KEY);
+      if (!raw) {
+        return null;
+      }
+
+      try {
+        const parsed = JSON.parse(raw);
+        const isValidUser = parsed
+          && typeof parsed.name === "string"
+          && parsed.name.trim()
+          && typeof parsed.email === "string"
+          && parsed.email.trim();
+
+        return isValidUser ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function hasActiveSession() {
+      return Boolean(localStorage.getItem(TOKEN_KEY) && getStoredUser());
+    }
+
+    function clearInvalidSession() {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    }
+
+    function redirectToDashboard() {
+      window.location.href = "Pages/dashboard.html";
+    }
+
+    function startDemoSession() {
+      localStorage.setItem(TOKEN_KEY, DEMO_TOKEN);
+      localStorage.setItem(USER_KEY, JSON.stringify(DEMO_USER));
+      localStorage.setItem(DEMO_MODE_KEY, "true");
+      localStorage.removeItem(SKIP_AUTO_LOGIN_KEY);
+      redirectToDashboard();
+    }
+
+    function showSecurityGate() {
+      const card = document.querySelector(".launch-card");
+      card.innerHTML = `
+        <h1>FYHBOOKS</h1>
+        <p>Enter security password to continue</p>
+        <input type="password" id="securityPass" placeholder="Security Password">
+        <p id="securityError" class="error" hidden>Incorrect password</p>
+        <button id="securityBtn">Unlock</button>
+      `;
+      
+      document.getElementById("securityBtn").addEventListener("click", () => {
+        const pass = document.getElementById("securityPass").value;
+        if (pass === SECURITY_PASSWORD) {
+          localStorage.setItem(SECURITY_PASS_KEY, "true");
+          startDemoSession();
+        } else {
+          document.getElementById("securityError").hidden = false;
+        }
+      });
+      
+      document.getElementById("securityPass").addEventListener("keyup", (e) => {
+        if (e.key === "Enter") {
+          document.getElementById("securityBtn").click();
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const message = document.getElementById("launchMessage");
+      const startButton = document.getElementById("startDemoBtn");
+      const skipAutoLogin = localStorage.getItem(SKIP_AUTO_LOGIN_KEY) === "true";
+      const securityVerified = localStorage.getItem(SECURITY_PASS_KEY) === "true";
+
+      if (localStorage.getItem(TOKEN_KEY) && !hasActiveSession()) {
+        clearInvalidSession();
+      }
+
+      if (hasActiveSession() && securityVerified) {
+        redirectToDashboard();
+        return;
+      }
+
+      if (skipAutoLogin) {
+        message.textContent = "You are signed out. Enter security password to continue.";
+        startButton.hidden = false;
+        startButton.textContent = "Unlock";
+        startButton.onclick = showSecurityGate;
+        return;
+      }
+
+      showSecurityGate();
+    });
+  </script>
+</head>
+<body>
+  <main class="launch-card">
+    <h1>FYHBOOKS</h1>
+    <p id="launchMessage">Preparing your demo workspace...</p>
+    <button id="startDemoBtn" type="button" hidden>Open Demo Dashboard</button>
+  </main>
+  <script src="js/theme.js"></script>
+  <script src="js/pwa.js"></script>
+</body>
+</html>
