@@ -85,7 +85,7 @@ function renderStep(modal, stepIndex) {
         case 0:
             content.innerHTML = `
                 <div class="onboarding-icon">📒</div>
-                <h1>Welcome to KHATA</h1>
+                <h1>Welcome to FIXYOURHUB BOOKS</h1>
                 <p>Your simple business accounting tool. Track companies, manage transactions, and monitor expenses with ease.</p>
             `;
             nextBtn.textContent = "Get Started";
@@ -147,7 +147,7 @@ function renderStep(modal, stepIndex) {
                 <h1>All Set!</h1>
                 <p>You're ready to start managing your business accounts. Let's go!</p>
             `;
-            nextBtn.textContent = "Start Using KHATA";
+            nextBtn.textContent = "Start Using FYHBOOKS";
             break;
     }
 
@@ -234,7 +234,9 @@ function completeOnboarding(modal) {
 
     setTimeout(() => {
         modal.remove();
-        window.location.href = "Pages/dashboard.html";
+        window.location.href = window.location.pathname.includes("/Pages/")
+            ? "dashboard.html"
+            : "Pages/dashboard.html";
     }, 400);
 }
 

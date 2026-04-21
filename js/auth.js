@@ -23,7 +23,8 @@ function enableDemoModeSession() {
 }
 
 function clearDemoModeSession() {
-    localStorage.removeItem("token");
+    localStorage.removeItem("khata_auth_token");
+    localStorage.removeItem("currentUser");
     localStorage.removeItem(DEMO_MODE_KEY);
 }
 

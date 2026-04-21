@@ -40,7 +40,7 @@ function renderReports() {
         data: {
             labels: ["Sales", "Expenses"],
             datasets: [{
-                label: "KHATA Financial Report",
+                label: "FIXYOURHUB BOOKS Financial Report",
                 data: [totals.sales, totals.expenses],
                 backgroundColor: [
                     "#3B82F6",

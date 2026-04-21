@@ -69,6 +69,17 @@ function cloneArray(items) {
     return items.map((item) => ({ ...item }));
 }
 
+function isValidSessionUser(user) {
+    return Boolean(
+        user &&
+        typeof user === "object" &&
+        typeof user.name === "string" &&
+        user.name.trim() &&
+        typeof user.email === "string" &&
+        user.email.trim()
+    );
+}
+
 function getStoredToken() {
     return localStorage.getItem(KHATA_TOKEN_KEY) || "";
 }
@@ -80,13 +91,24 @@ function getStoredUser() {
     }
 
     try {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!isValidSessionUser(parsed)) {
+            localStorage.removeItem(KHATA_USER_KEY);
+            return null;
+        }
+        return parsed;
     } catch (error) {
+        localStorage.removeItem(KHATA_USER_KEY);
         return null;
     }
 }
 
 function setSession(token, user) {
+    if (!token || !isValidSessionUser(user)) {
+        clearSession();
+        return;
+    }
+
     appState.token = token;
     appState.user = user;
     localStorage.setItem(KHATA_TOKEN_KEY, token);
@@ -177,7 +199,14 @@ async function apiRequest(path, options = {}) {
 }
 
 function getCurrentUser() {
-    return appState.user || getStoredUser();
+    const user = appState.user || getStoredUser();
+    if (!isValidSessionUser(user)) {
+        appState.user = null;
+        localStorage.removeItem(KHATA_USER_KEY);
+        return null;
+    }
+
+    return user;
 }
 
 function getAuthToken() {
@@ -191,6 +220,7 @@ function isAuthenticated() {
 function requireCurrentUser() {
     const user = getCurrentUser();
     if (!user || !getAuthToken()) {
+        clearSession();
         window.location.href = getAppHomePath();
         return null;
     }

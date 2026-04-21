@@ -34,7 +34,7 @@ async function exportToPDF() {
     doc.setTextColor(0, 255, 208);
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    doc.text("KHATA", 20, 25);
+    doc.text("FIXYOURHUB BOOKS", 20, 25);
     
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(12);

@@ -587,14 +587,6 @@ function createCompanyCard(company, metrics) {
                     <span class="stat-label">Revenue</span>
                     <span class="stat-value">${formattedRevenue}</span>
                 </div>
-                <div class="stat-box">
-                    <span class="stat-label">Transactions</span>
-                    <span class="stat-value">${metrics.transactionCount}</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-label">Today Sales</span>
-                    <span class="stat-value">${formattedTodaySales}</span>
-                </div>
             </div>
             <div class="company-chart">
                 <canvas class="company-revenue-chart" data-company-id="${escapeHtml(company.id)}"></canvas>

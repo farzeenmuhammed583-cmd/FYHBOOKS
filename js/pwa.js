@@ -20,7 +20,7 @@ function registerServiceWorker() {
 }
 
 function checkForUpdates() {
-  if (confirm('A new version of KHATA is available. Restart to update?')) {
+  if (confirm('A new version of FIXYOURHUB BOOKS is available. Restart to update?')) {
     applyUpdate();
   }
 }

@@ -1,41 +1,46 @@
 // --- Core Application Logic ---
 
-document.addEventListener("DOMContentLoaded", async () => {
+function isProtectedPage(pathname) {
     const protectedPages = ["dashboard", "stores", "company", "reports", "expenses", "settings", "transactions"];
-    const currentPage = window.location.pathname;
+    return protectedPages.some((page) => pathname.includes(page));
+}
 
-    // If it's not a protected page, do nothing.
-    if (!protectedPages.some((page) => currentPage.includes(page))) {
+document.addEventListener("DOMContentLoaded", async () => {
+    const currentPage = window.location.pathname;
+    if (!isProtectedPage(currentPage)) {
         return;
     }
 
-    // Ensure user is authenticated
-    const user = window.requireCurrentUser();
-    if (!user) return; // Stop execution if not logged in
+    const user = typeof window.requireCurrentUser === "function"
+        ? window.requireCurrentUser()
+        : null;
+    if (!user) {
+        window.location.href = "index.html";
+        return;
+    }
 
-    // Display user's name
     const userNameEl = document.getElementById("userName");
     if (userNameEl) {
         userNameEl.innerText = user.name;
     }
 
     try {
-        // Load all application data. This is now the single source of truth.
         await window.ensureAppDataLoaded();
     } catch (error) {
         console.error("Data load error:", error);
+        if (typeof window.clearSession === "function") {
+            window.clearSession();
+        }
         window.location.href = window.getAppHomePath();
         return;
     }
 
-    // Show onboarding wizard if not complete
     if (typeof window.initOnboarding === "function") {
         window.initOnboarding();
     }
 
-    // If on the dashboard, update the stats.
     if (currentPage.includes("dashboard")) {
-        window.updateDashboardStats();
+        updateDashboardStats();
     }
 });
 
@@ -155,35 +160,12 @@ function updateDashboardStats() {
 
     document.getElementById("totalSales").innerText = formatCurrency(totalSales);
     document.getElementById("totalExpenses").innerText = formatCurrency(totalTransactionExpenses + totalStandaloneExpenses);
-    document.getElementById("totalTransactions").innerText = String(window.getTotalTransactions());
-    document.getElementById("netBalance").innerText = formatCurrency(netBalance);
-    document.getElementById("storeCount").innerText = String(stores.length);
-}
-
-window.updateDashboardStats = updateDashboardStats;
-
-    const transactions = getTransactions();
-    const expenses = getExpenses();
-    const stores = getStores();
-
-    let totalSales = 0;
-    let totalTransactionExpenses = 0;
-
-    transactions.forEach((transaction) => {
-        if (transaction.type === "credit") {
-            totalSales += Number(transaction.amount || 0);
-        } else if (transaction.type === "debit") {
-            totalTransactionExpenses += Number(transaction.amount || 0);
-        }
-    });
-
-    const totalStandaloneExpenses = expenses.reduce((acc, expense) => acc + Number(expense.amount || 0), 0);
-    const netBalance = totalSales - (totalTransactionExpenses + totalStandaloneExpenses);
-
-    document.getElementById("totalSales").innerText = formatCurrency(totalSales);
-    document.getElementById("totalExpenses").innerText = formatCurrency(totalTransactionExpenses + totalStandaloneExpenses);
     document.getElementById("totalTransactions").innerText = String(getTotalTransactions());
     document.getElementById("netBalance").innerText = formatCurrency(netBalance);
     document.getElementById("storeCount").innerText = String(stores.length);
     renderRevenueChart();
 }
+
+window.getTotalTransactions = getTotalTransactions;
+window.renderRevenueChart = renderRevenueChart;
+window.updateDashboardStats = updateDashboardStats;
